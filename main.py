@@ -33,14 +33,24 @@ def get_title_from_file(path="titles.txt"):
         raise Exception("titles.txt empty")
 
     line = lines[0]
+    parts = [p.strip() for p in line.split("|")]
 
-    if "|" not in line:
-        raise Exception("Format: Title #tags | description")
+    # ===== CASE 1: Title | hashtags =====
+    if len(parts) == 2:
+        title = parts[0]
+        hashtags = parts[1]
+        title = f"{title} {hashtags}".strip()
+        description = ""
 
-    title_part, desc_part = line.split("|", 1)
+    # ===== CASE 2: Title | hashtags | description =====
+    elif len(parts) >= 3:
+        title = parts[0]
+        hashtags = parts[1]
+        description = parts[2]
+        title = f"{title} {hashtags}".strip()
 
-    title = title_part.strip()
-    description = desc_part.strip()
+    else:
+        raise Exception("Invalid title format")
 
     # remove used line
     with open(path, "w", encoding="utf-8") as f:
@@ -104,15 +114,15 @@ def get_publish_time():
     today_8 = datetime.combine(today, time(8, 0), ist)
     today_14 = datetime.combine(today, time(14, 0), ist)
 
-    # 1️⃣ before 7 AM → 8 AM
+    # before 7 AM → 8 AM
     if now < datetime.combine(today, time(7, 0), ist):
         return today_8
 
-    # 2️⃣ before 1 PM → 2 PM
+    # before 1 PM → 2 PM
     if now < datetime.combine(today, time(13, 0), ist):
         return today_14
 
-    # 3️⃣ after 1 PM → next day 8 AM
+    # after 1 PM → next day 8 AM
     next_day = today + timedelta(days=1)
     return datetime.combine(next_day, time(8, 0), ist)
 
