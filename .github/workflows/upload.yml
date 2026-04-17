@@ -2,17 +2,20 @@ name: Daily YouTube Upload Bot
 
 on:
   schedule:
-    # 12:00 PM IST (UTC 06:30)
-    # Ye run karega aur video 2:00 PM IST ke liye schedule hoga
-    - cron: '30 6 * * *'
-  workflow_dispatch:   # manual trigger (Run workflow button)
+    # 🕖 7:00 AM IST → 8:00 AM upload (UTC 01:30)
+    - cron: '30 1 * * *'
+
+    # 🕐 1:00 PM IST → 2:00 PM upload (UTC 07:30)
+    - cron: '30 7 * * *'
+
+  workflow_dispatch:  # manual run button
 
 jobs:
   upload:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -30,21 +33,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 4️⃣ Run YouTube automation bot
+      # 4️⃣ Run automation
       - name: Run YouTube automation bot
         env:
           GOOGLE_TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
           PENDING_FOLDER_ID: ${{ secrets.PENDING_FOLDER_ID }}
           UPLOADED_FOLDER_ID: ${{ secrets.UPLOADED_FOLDER_ID }}
         run: |
-          echo "🚀 Starting YouTube automation bot..."
+          echo "🚀 Starting automation..."
           python main.py
 
-      # 5️⃣ Commit updated titles.txt (mark used title)
+      # 5️⃣ Commit updated titles.txt
       - name: Commit updated titles.txt
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
           git add titles.txt
-          git commit -m "chore: mark title as used" || echo "No changes to commit"
+          git commit -m "chore: mark title as used" || echo "No changes"
+
           git push
