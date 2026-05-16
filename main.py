@@ -19,12 +19,15 @@ if not TOKEN_JSON or not PENDING_FOLDER_ID or not UPLOADED_FOLDER_ID:
 
 
 # ================= AUTH =================
-creds = Credentials.from_authorized_user_info(json.loads(TOKEN_JSON))
+creds = Credentials.from_authorized_user_info(
+    json.loads(TOKEN_JSON)
+)
+
 drive = build("drive", "v3", credentials=creds)
 youtube = build("youtube", "v3", credentials=creds)
 
 
-# ================= TITLE =================
+# ================= TITLES =================
 def get_title_from_file(path="titles.txt"):
     with open(path, "r", encoding="utf-8") as f:
         lines = [l.strip() for l in f if l.strip()]
@@ -35,19 +38,17 @@ def get_title_from_file(path="titles.txt"):
     line = lines[0]
     parts = [p.strip() for p in line.split("|")]
 
-    # ===== CASE 1: Title | hashtags =====
+    # ===== CASE 1 =====
+    # Title | hashtags
     if len(parts) == 2:
-        title = parts[0]
-        hashtags = parts[1]
-        title = f"{title} {hashtags}".strip()
+        title = f"{parts[0]} {parts[1]}".strip()
         description = ""
 
-    # ===== CASE 2: Title | hashtags | description =====
+    # ===== CASE 2 =====
+    # Title | hashtags | description
     elif len(parts) >= 3:
-        title = parts[0]
-        hashtags = parts[1]
+        title = f"{parts[0]} {parts[1]}".strip()
         description = parts[2]
-        title = f"{title} {hashtags}".strip()
 
     else:
         raise Exception("Invalid title format")
@@ -67,6 +68,7 @@ def get_video_file():
     ).execute()
 
     files = res.get("files", [])
+
     if not files:
         raise Exception("No video found")
 
@@ -79,6 +81,7 @@ def resolve_shortcut(file):
             fileId=file["shortcutDetails"]["targetId"],
             fields="id,name,mimeType"
         ).execute()
+
     return file
 
 
@@ -88,7 +91,9 @@ def download_video(file):
 
     with open(filename, "wb") as f:
         downloader = MediaIoBaseDownload(f, request)
+
         done = False
+
         while not done:
             _, done = downloader.next_chunk()
 
@@ -114,17 +119,18 @@ def get_publish_time():
     today_8 = datetime.combine(today, time(8, 0), ist)
     today_14 = datetime.combine(today, time(14, 0), ist)
 
-    # before 7 AM → 8 AM
-    if now < datetime.combine(today, time(7, 0), ist):
+    # 🌅 Before 8 AM → Today 8 AM
+    if now < today_8:
         return today_8
 
-    # before 1 PM → 2 PM
-    if now < datetime.combine(today, time(13, 0), ist):
+    # 🌇 Before 2 PM → Today 2 PM
+    if now < today_14:
         return today_14
 
-    # after 1 PM → next day 8 AM
+    # 🌙 After 2 PM → Next day 2 PM
     next_day = today + timedelta(days=1)
-    return datetime.combine(next_day, time(8, 0), ist)
+
+    return datetime.combine(next_day, time(14, 0), ist)
 
 
 # ================= YOUTUBE =================
@@ -137,12 +143,17 @@ def upload_to_youtube(video_path, title, description, publish_time):
         },
         "status": {
             "privacyStatus": "private",
-            "publishAt": publish_time.astimezone(ZoneInfo("UTC")).isoformat(),
+            "publishAt": publish_time.astimezone(
+                ZoneInfo("UTC")
+            ).isoformat(),
             "selfDeclaredMadeForKids": False
         }
     }
 
-    media = MediaFileUpload(video_path, resumable=True)
+    media = MediaFileUpload(
+        video_path,
+        resumable=True
+    )
 
     res = youtube.videos().insert(
         part="snippet,status",
@@ -166,16 +177,25 @@ def main():
     file = resolve_shortcut(file)
 
     video_path = download_video(file)
+
     print("⬇️ Downloaded:", video_path)
 
     publish_time = get_publish_time()
+
     print("⏰ Scheduled IST:", publish_time)
 
-    video_id = upload_to_youtube(video_path, title, description, publish_time)
+    video_id = upload_to_youtube(
+        video_path,
+        title,
+        description,
+        publish_time
+    )
+
     print("✅ Uploaded:", video_id)
 
     move_file(file["id"])
-    print("📁 Moved file")
+
+    print("📁 Moved to uploaded folder")
 
 
 if __name__ == "__main__":
